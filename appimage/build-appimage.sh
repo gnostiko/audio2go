@@ -362,12 +362,23 @@ ensure_svg_pixbuf_loader() {
   install -D -m755 "$svg_loader" "${app_loaders}/libpixbufloader-svg.so"
   bundle_ldd_deps "${app_loaders}/libpixbufloader-svg.so"
   local query_loaders=""
-  for cand in gdk-pixbuf-query-loaders gdk-pixbuf-query-loaders-64; do
-    if command -v "$cand" >/dev/null 2>&1; then
-      query_loaders="$cand"
-      break
-    fi
-  done
+  query_loaders="$(command -v gdk-pixbuf-query-loaders 2>/dev/null || true)"
+  if [ -z "$query_loaders" ]; then
+    query_loaders="$(command -v gdk-pixbuf-query-loaders-64 2>/dev/null || true)"
+  fi
+  if [ -z "$query_loaders" ] || [ ! -x "$query_loaders" ]; then
+    query_loaders=""
+    for cand in \
+      /usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/gdk-pixbuf-query-loaders \
+      /usr/lib64/gdk-pixbuf-2.0/gdk-pixbuf-query-loaders \
+      /usr/lib/gdk-pixbuf-2.0/gdk-pixbuf-query-loaders
+    do
+      if [ -x "$cand" ]; then
+        query_loaders="$cand"
+        break
+      fi
+    done
+  fi
   if [ -z "$query_loaders" ]; then
     echo "error: gdk-pixbuf-query-loaders required (install libgdk-pixbuf2.0-bin)" >&2
     exit 1
