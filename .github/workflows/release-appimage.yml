@@ -39,6 +39,8 @@ jobs:
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             build-essential \
+            meson \
+            ninja-build \
             curl \
             file \
             binutils \
@@ -68,7 +70,9 @@ jobs:
           python3 --version
           curl -sS https://bootstrap.pypa.io/get-pip.py | python3
           python3 -m pip install --upgrade pip
-          python3 -m pip install 'pygobject>=3.46' mutagen pillow
+          # PyGObject 3.52+ needs girepository-2.0 (Ubuntu 24.04+). Stay on 3.48
+          # so the Ubuntu 22.04 image still builds against girepository-1.0.
+          python3 -m pip install 'pycairo' 'PyGObject>=3.46,<3.50' mutagen pillow
 
       - name: Verify tools on PATH
         run: |
