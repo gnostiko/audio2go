@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=audio2go
+Comment=Sync and transcode a music library for portable devices
+Exec=audio2go
+Icon=org.audio2go.Audio2Go
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;Music;
+Keywords=Audio;Music;Sync;Transcode;Library;MP3;Opus;AAC;
+StartupNotify=true
+StartupWMClass=org.audio2go.Audio2Go

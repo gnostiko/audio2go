@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.cache/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+build/
+dist/
+*.AppImage
+*.AppImage.zsync
+.tools/
+build-appimage/
+*.log

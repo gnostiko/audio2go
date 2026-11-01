@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="Adw" version="1.0"/>
+  <template class="Audio2GoWindow" parent="AdwApplicationWindow">
+    <property name="title">audio2go</property>
+    <property name="icon-name">org.audio2go.Audio2Go</property>
+    <property name="default-width">480</property>
+    <property name="default-height">600</property>
+    <child>
+      <object class="GtkOverlay" id="window_overlay">
+        <child>
+          <object class="AdwToolbarView" id="toolbar_view">
+            <property name="reveal-bottom-bars">false</property>
+            <child type="top">
+              <object class="AdwHeaderBar" id="header_bar">
+                <property name="title-widget">
+                  <object class="AdwWindowTitle" id="window_title">
+                    <property name="title">audio2go</property>
+                  </object>
+                </property>
+                <child type="start">
+                  <object class="GtkMenuButton" id="menu_button">
+                    <property name="icon-name">help-about-symbolic</property>
+                    <property name="tooltip-text" translatable="yes">About this application</property>
+                    <property name="primary">true</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="AdwToastOverlay" id="toast_overlay">
+                <child>
+                  <object class="GtkScrolledWindow">
+                    <property name="vexpand">true</property>
+                    <property name="hexpand">true</property>
+                    <property name="hscrollbar-policy">never</property>
+                    <property name="propagate-natural-height">false</property>
+                    <child>
+                      <object class="AdwClamp">
+                        <property name="maximum-size">440</property>
+                        <property name="tightening-threshold">320</property>
+                        <property name="unit">sp</property>
+                        <property name="vexpand">true</property>
+                        <child>
+                          <object class="GtkStack" id="main_stack">
+                            <property name="vexpand">true</property>
+                            <property name="hexpand">true</property>
+                            <property name="transition-type">crossfade</property>
+                            <property name="transition-duration">150</property>
+                            <child>
+                              <object class="AdwStatusPage" id="empty_page">
+                                <property name="icon-name">org.audio2go.Audio2Go</property>
+                                <property name="title" translatable="yes">Plug in devices</property>
+                                <property name="description" translatable="yes">
+                                  Connect USB drives, SD cards, or portable players.
+                                </property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkBox" id="content_box">
+                                <property name="orientation">vertical</property>
+                                <property name="spacing">18</property>
+                                <property name="margin-top">18</property>
+                                <property name="margin-bottom">18</property>
+                                <property name="margin-start">12</property>
+                                <property name="margin-end">12</property>
+                                <property name="hexpand">true</property>
+                                <property name="vexpand">true</property>
+                                <child>
+                                  <object class="AdwPreferencesGroup" id="library_group">
+                                    <property name="title" translatable="yes">Library</property>
+                                    <child>
+                                      <object class="AdwActionRow" id="source_row">
+                                        <property name="title" translatable="yes">Select a folder</property>
+                                        <property name="activatable">true</property>
+                                        <property name="tooltip-text" translatable="yes">Select music folder</property>
+                                        <style>
+                                          <class name="audio2go-path-subtitle"/>
+                                        </style>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="AdwPreferencesGroup" id="device_group">
+                                    <property name="title" translatable="yes">Devices</property>
+                                    <property name="description" translatable="yes">Each player keeps its own format and options.</property>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkBox">
+                                    <property name="orientation">vertical</property>
+                                    <property name="hexpand">true</property>
+                                    <property name="vexpand">true</property>
+                                    <property name="spacing">0</property>
+                                    <child>
+                                      <object class="GtkBox">
+                                        <property name="vexpand">true</property>
+                                        <property name="hexpand">true</property>
+                                      </object>
+                                    </child>
+                                    <child>
+                                      <object class="GtkButton" id="sync_button">
+                                        <property name="label" translatable="yes">Sync</property>
+                                        <property name="sensitive">false</property>
+                                        <property name="halign">center</property>
+                                        <property name="valign">center</property>
+                                        <property name="tooltip-text" translatable="yes">Sync library to the selected device</property>
+                                        <property name="action-name">win.sync</property>
+                                        <style>
+                                          <class name="suggested-action"/>
+                                          <class name="pill"/>
+                                          <class name="audio2go-sync"/>
+                                        </style>
+                                      </object>
+                                    </child>
+                                    <child>
+                                      <object class="GtkBox">
+                                        <property name="vexpand">true</property>
+                                        <property name="hexpand">true</property>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child type="bottom">
+              <object class="GtkRevealer" id="sync_revealer">
+                <property name="reveal-child">false</property>
+                <property name="transition-type">slide-up</property>
+                <property name="transition-duration">200</property>
+                <child>
+                  <object class="GtkBox" id="sync_banner">
+                    <property name="orientation">vertical</property>
+                    <property name="hexpand">true</property>
+                    <style>
+                      <class name="audio2go-sync-bar"/>
+                    </style>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">12</property>
+                        <property name="margin-start">18</property>
+                        <property name="margin-end">18</property>
+                        <property name="margin-top">12</property>
+                        <property name="margin-bottom">12</property>
+                        <child>
+                          <object class="GtkLabel" id="sync_title_label">
+                            <property name="label" translatable="yes">Syncing music</property>
+                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
+                            <property name="hexpand">true</property>
+                            <property name="selectable">false</property>
+                            <style>
+                              <class name="heading"/>
+                            </style>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="stop_button">
+                            <property name="icon-name">process-stop-symbolic</property>
+                            <property name="tooltip-text" translatable="yes">Stop sync</property>
+                            <property name="action-name">win.stop</property>
+                            <property name="valign">center</property>
+                            <style>
+                              <class name="flat"/>
+                              <class name="circular"/>
+                              <class name="audio2go-stop"/>
+                            </style>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child type="overlay">
+          <object class="GtkBox" id="flash_veil">
+            <property name="hexpand">true</property>
+            <property name="vexpand">true</property>
+            <property name="can-target">false</property>
+            <style>
+              <class name="audio2go-flash-veil"/>
+            </style>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>

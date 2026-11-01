@@ -1,0 +1,79 @@
+#!/bin/sh
+# Fast, portable AppRun for the audio2go AppImage.
+# Prefer bundled Python + GI so GitHub downloads work without matching host deps.
+
+HERE="$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")"
+export APPDIR="$HERE"
+
+export PATH="$HERE/usr/bin${PATH:+:$PATH}"
+
+PYTHON=""
+for cand in \
+  "$HERE/usr/bin/python3" \
+  "$HERE/usr/bin/python3.14" \
+  "$HERE/usr/bin/python3.13" \
+  "$HERE/usr/bin/python3.12" \
+  "$HERE/usr/bin/python3.11"
+do
+  if [ -x "$cand" ]; then
+    PYTHON="$cand"
+    break
+  fi
+done
+if [ -z "$PYTHON" ]; then
+  echo "audio2go: bundled python3 not found (AppImage incomplete or broken)" >&2
+  exit 1
+fi
+
+export PYTHONHOME="$HERE/usr"
+export PYTHONNOUSERSITE=1
+
+export PYTHONPATH="$HERE/usr/share/audio2go"
+if [ -d "$HERE/usr/lib/python3/site-packages" ]; then
+  export PYTHONPATH="$HERE/usr/lib/python3/site-packages:$PYTHONPATH"
+fi
+for d in "$HERE/usr/lib"/python3.*/site-packages; do
+  [ -d "$d" ] || continue
+  export PYTHONPATH="$d:$PYTHONPATH"
+done
+
+export GSETTINGS_SCHEMA_DIR="$HERE/usr/share/glib-2.0/schemas"
+export XDG_DATA_DIRS="$HERE/usr/share${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"
+if [ -d "$HERE/usr/share/icons" ]; then
+  export AUDIO2GO_ICON_DIR="$HERE/usr/share/icons"
+fi
+
+if [ -d "$HERE/usr/lib" ]; then
+  export LD_LIBRARY_PATH="$HERE/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+if [ -d "$HERE/usr/lib64" ]; then
+  export LD_LIBRARY_PATH="$HERE/usr/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+for d in \
+  "$HERE/usr/lib"/x86_64-linux-gnu \
+  "$HERE/usr/lib"/aarch64-linux-gnu \
+  "$HERE/usr/lib"/glibc-hwcaps/x86-64-v3 \
+  "$HERE/usr/lib"/glibc-hwcaps/x86-64-v2
+do
+  [ -d "$d" ] || continue
+  export LD_LIBRARY_PATH="$d${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+done
+
+if [ -d "$HERE/usr/lib/girepository-1.0" ]; then
+  export GI_TYPELIB_PATH="$HERE/usr/lib/girepository-1.0${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
+fi
+if [ -d "$HERE/usr/lib64/girepository-1.0" ]; then
+  export GI_TYPELIB_PATH="$HERE/usr/lib64/girepository-1.0${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
+fi
+
+if [ -d "$HERE/usr/lib/gdk-pixbuf-2.0" ]; then
+  for cache in "$HERE/usr/lib"/gdk-pixbuf-2.0/*/loaders.cache; do
+    if [ -f "$cache" ]; then
+      export GDK_PIXBUF_MODULE_FILE="$cache"
+      break
+    fi
+  done
+fi
+
+# -B: do not write .pyc into a read-only AppImage mount
+exec "$PYTHON" -B -m audio2go.main "$@"

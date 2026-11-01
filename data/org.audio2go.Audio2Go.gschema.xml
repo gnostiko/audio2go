@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="audio2go">
+  <schema id="org.audio2go.Audio2Go" path="/org/audio2go/Audio2Go/">
+
+    <key name="source-directory" type="s">
+      <default>''</default>
+      <summary>Source library folder</summary>
+      <description>
+        The music library to read. When empty, the app uses the XDG Music
+        folder (typically ~/Music).
+      </description>
+    </key>
+
+    <key name="destination-directory" type="s">
+      <default>''</default>
+      <summary>Destination folder</summary>
+      <description>
+        Where copied and transcoded files are written (the mounted removable
+        drive, or a folder chosen in Device settings).
+      </description>
+    </key>
+
+    <key name="device-name" type="s">
+      <default>''</default>
+      <summary>App-specific device nickname</summary>
+    </key>
+
+    <key name="device-uuid" type="s">
+      <default>''</default>
+      <summary>Volume UUID used to find the drive after remount</summary>
+    </key>
+
+    <key name="device-configured" type="b">
+      <default>false</default>
+      <summary>True after a device has been selected</summary>
+    </key>
+
+    <key name="color-scheme" type="s">
+      <choices>
+        <choice value="default"/>
+        <choice value="light"/>
+        <choice value="dark"/>
+      </choices>
+      <default>'default'</default>
+      <summary>Application color scheme</summary>
+    </key>
+
+    <key name="output-format" type="s">
+      <choices>
+        <choice value="copy"/>
+        <choice value="mp3"/>
+        <choice value="aac"/>
+        <choice value="opus"/>
+      </choices>
+      <default>'opus'</default>
+      <summary>How lossless files are written to the destination</summary>
+    </key>
+
+    <key name="mp3-quality" type="s">
+      <choices>
+        <choice value="v0"/>
+        <choice value="v1"/>
+        <choice value="v2"/>
+        <choice value="v3"/>
+        <choice value="v4"/>
+        <choice value="v5"/>
+        <choice value="cbr320"/>
+        <choice value="cbr256"/>
+        <choice value="cbr192"/>
+        <choice value="cbr128"/>
+      </choices>
+      <default>'v2'</default>
+      <summary>MP3 quality (LAME VBR -Vn or CBR)</summary>
+    </key>
+
+    <key name="aac-quality" type="s">
+      <choices>
+        <choice value="vbr5"/>
+        <choice value="vbr4"/>
+        <choice value="vbr3"/>
+        <choice value="vbr2"/>
+        <choice value="vbr1"/>
+        <choice value="cbr320"/>
+        <choice value="cbr256"/>
+        <choice value="cbr192"/>
+        <choice value="cbr128"/>
+      </choices>
+      <default>'cbr192'</default>
+      <summary>AAC quality preset (FDK VBR 1–5 or CBR)</summary>
+    </key>
+
+    <key name="opus-bitrate" type="i">
+      <range min="48" max="512"/>
+      <default>160</default>
+      <summary>Opus bitrate (kbps)</summary>
+    </key>
+
+    <key name="skip-existing" type="b">
+      <default>true</default>
+      <summary>Skip files that already exist in the destination</summary>
+    </key>
+
+    <key name="copy-non-audio" type="b">
+      <default>true</default>
+      <summary>Copy non-audio sidecar files (covers, cues, logs)</summary>
+    </key>
+
+    <key name="copy-lyrics" type="b">
+      <default>true</default>
+      <summary>Copy lyric sidecar files (.lrc, .txt, and similar)</summary>
+    </key>
+
+    <key name="copy-metadata" type="b">
+      <default>true</default>
+      <summary>Copy tags when transcoding</summary>
+    </key>
+
+    <key name="normalize-volume" type="b">
+      <default>false</default>
+      <summary>Normalize volume when transcoding</summary>
+      <description>
+        Apply EBU R128 loudness normalization while converting lossless
+        files so tracks play at a more even volume on the device.
+      </description>
+    </key>
+
+    <key name="replaygain" type="b">
+      <default>false</default>
+      <summary>Calculate ReplayGain tags</summary>
+      <description>
+        Measure track ReplayGain and write tags when copying or transcoding.
+        Files that already have ReplayGain tags are left unchanged.
+      </description>
+    </key>
+
+    <key name="embed-artwork" type="b">
+      <default>true</default>
+      <summary>Embed album artwork in transcoded files</summary>
+    </key>
+
+    <key name="artwork-max-size" type="i">
+      <range min="0" max="4000"/>
+      <default>600</default>
+      <summary>Maximum embedded artwork edge length (pixels)</summary>
+      <description>
+        Before embedding into audio files, images are scaled so the longest
+        edge is this many pixels. 0 keeps the original size. Default is 600.
+      </description>
+    </key>
+
+  </schema>
+</schemalist>
