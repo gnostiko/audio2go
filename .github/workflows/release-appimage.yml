@@ -6,7 +6,7 @@
 #
 # Usage:
 #   1. Bump APPLICATION_VERSION in src/audio2go/config.py (and pyproject.toml).
-#   2. git tag v0.1.1 && git push origin v0.1.1
+#   2. git tag v0.1.2 && git push origin v0.1.2
 #   3. This workflow builds and uploads:
 #        audio2go-VERSION-x86_64.AppImage
 #        audio2go-VERSION-x86_64.AppImage.zsync
@@ -54,9 +54,17 @@ jobs:
             libadwaita-1-dev \
             gobject-introspection \
             librsvg2-bin \
+            librsvg2-common \
+            librsvg2-2 \
+            libgdk-pixbuf2.0-bin \
+            libgtk-4-bin \
+            adwaita-icon-theme \
+            hicolor-icon-theme \
             ffmpeg \
             zsync \
             libglib2.0-bin
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            adwaita-icon-theme-legacy || true
 
       - name: Verify tools on PATH
         run: |

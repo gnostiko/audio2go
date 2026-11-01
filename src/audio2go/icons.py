@@ -115,6 +115,9 @@ def _icon_search_roots() -> list[Path]:
     env = os.environ.get('AUDIO2GO_ICON_DIR')
     if env:
         add(Path(env))
+    appdir = os.environ.get('APPDIR')
+    if appdir:
+        add(Path(appdir) / 'usr' / 'share' / 'icons')
     add(_project_icon_root())
     return roots
 

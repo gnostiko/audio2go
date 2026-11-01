@@ -60,6 +60,10 @@ fi
 if ! command -v zsyncmake >/dev/null 2>&1; then
   echo "warning: zsyncmake not found — install package 'zsync' for Gear Lever delta updates" >&2
 fi
+if ! command -v rsvg-convert >/dev/null 2>&1; then
+  echo "error: rsvg-convert required (install librsvg2-bin) to rasterize app icons" >&2
+  exit 1
+fi
 
 PY_VER="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
 PY_MINOR="$(python3 -c 'import sys; print(sys.version_info.minor)')"
@@ -326,6 +330,57 @@ bundle_ldd_deps() {
   done
 }
 
+ensure_svg_pixbuf_loader() {
+  # SVG icons (app mark + Adwaita symbolic) need the rsvg pixbuf module.
+  # Ubuntu splits it into librsvg2-common; a plain gdk-pixbuf tree often lacks it.
+  echo "==> ensuring SVG pixbuf loader"
+  local svg_loader="" cand loaders_dir app_loaders cache
+  for cand in \
+    /usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/*/loaders/libpixbufloader-svg.so \
+    /usr/lib64/gdk-pixbuf-2.0/*/loaders/libpixbufloader-svg.so \
+    /usr/lib/gdk-pixbuf-2.0/*/loaders/libpixbufloader-svg.so
+  do
+    if [ -f "$cand" ]; then
+      svg_loader="$cand"
+      break
+    fi
+  done
+  if [ -z "$svg_loader" ]; then
+    echo "error: libpixbufloader-svg.so not on host (install librsvg2-common)" >&2
+    exit 1
+  fi
+  app_loaders=""
+  for loaders_dir in "${APPDIR}/usr/lib"/gdk-pixbuf-2.0/*/loaders; do
+    [ -d "$loaders_dir" ] || continue
+    app_loaders="$loaders_dir"
+    break
+  done
+  if [ -z "$app_loaders" ]; then
+    app_loaders="${APPDIR}/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders"
+    mkdir -p "$app_loaders"
+  fi
+  install -D -m755 "$svg_loader" "${app_loaders}/libpixbufloader-svg.so"
+  bundle_ldd_deps "${app_loaders}/libpixbufloader-svg.so"
+  local query_loaders=""
+  for cand in gdk-pixbuf-query-loaders gdk-pixbuf-query-loaders-64; do
+    if command -v "$cand" >/dev/null 2>&1; then
+      query_loaders="$cand"
+      break
+    fi
+  done
+  if [ -z "$query_loaders" ]; then
+    echo "error: gdk-pixbuf-query-loaders required (install libgdk-pixbuf2.0-bin)" >&2
+    exit 1
+  fi
+  cache="${app_loaders}/../loaders.cache"
+  GDK_PIXBUF_MODULEDIR="$app_loaders" \
+    "$query_loaders" >"$cache"
+  if ! grep -q pixbufloader-svg "$cache"; then
+    echo "error: SVG pixbuf loader did not register in loaders.cache" >&2
+    exit 1
+  fi
+}
+
 bundle_python_stdlib() {
   local pyver platlib
   pyver="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
@@ -439,7 +494,7 @@ for soname in libgtk-4.so.1 libadwaita-1.so.0 libgdk_pixbuf-2.0.so.0 \
   libgraphene-1.0.so.0 libharfbuzz.so.0 libepoxy.so.0 \
   libcairo.so.2 libfribidi.so.0 libcloudproviders.so.0 \
   libgirepository-2.0.so.0 libgirepository-1.0.so.1 \
-  libffi.so.8 libpcre2-8.so.0; do
+  libffi.so.8 libpcre2-8.so.0 librsvg-2.so.2; do
   path="$(resolve_soname "$soname" || true)"
   if [ -n "$path" ] && [ -f "$path" ]; then
     echo "    lib $path"
@@ -462,17 +517,8 @@ for pbdir in /usr/lib/gdk-pixbuf-2.0 /usr/lib64/gdk-pixbuf-2.0 \
     break
   fi
 done
-if command -v gdk-pixbuf-query-loaders >/dev/null 2>&1; then
-  for loaders_dir in "${APPDIR}/usr/lib"/gdk-pixbuf-2.0/*/loaders; do
-    [ -d "$loaders_dir" ] || continue
-    cache="${loaders_dir}/../loaders.cache"
-    GDK_PIXBUF_MODULEDIR="$loaders_dir" \
-      gdk-pixbuf-query-loaders >"$cache" 2>/dev/null || true
-    if [ -f "$cache" ]; then
-      sed -i "s|$APPDIR|./|g" "$cache" 2>/dev/null || true
-    fi
-  done
-fi
+
+ensure_svg_pixbuf_loader
 
 find "${APPDIR}/usr/bin" -name 'lib*.so*' -delete 2>/dev/null || true
 ensure_soname_links
@@ -574,6 +620,140 @@ cp -f "${ROOT}/appimage/${APP_ID}.desktop" "${APPDIR}/${APP_ID}.desktop"
 sed -i 's/^Exec=.*/Exec=audio2go/' "${APPDIR}/${APP_ID}.desktop"
 cp -f "${ROOT}/data/icons/hicolor/scalable/apps/${APP_ID}.svg" "${APPDIR}/${APP_ID}.svg"
 ensure_soname_links
+ensure_svg_pixbuf_loader
+
+# linuxdeploy --icon-file leaves empty hicolor size dirs and does not copy
+# Adwaita or hicolor/index.theme. GTK then cannot resolve the app icon or
+# symbolic icons inside a self-contained AppImage.
+echo "==> bundling icon themes"
+HICOLOR_DST="${APPDIR}/usr/share/icons/hicolor"
+mkdir -p "$HICOLOR_DST"
+if [ -f /usr/share/icons/hicolor/index.theme ]; then
+  install -D -m644 /usr/share/icons/hicolor/index.theme \
+    "${HICOLOR_DST}/index.theme"
+elif [ ! -f "${HICOLOR_DST}/index.theme" ]; then
+  cat > "${HICOLOR_DST}/index.theme" <<'EOF'
+[Icon Theme]
+Name=Hicolor
+Comment=Fallback icon theme
+Hidden=true
+Directories=16x16/apps,24x24/apps,32x32/apps,48x48/apps,64x64/apps,128x128/apps,256x256/apps,512x512/apps,scalable/apps,symbolic/apps
+
+[16x16/apps]
+Size=16
+Context=Applications
+Type=Fixed
+
+[24x24/apps]
+Size=24
+Context=Applications
+Type=Fixed
+
+[32x32/apps]
+Size=32
+Context=Applications
+Type=Fixed
+
+[48x48/apps]
+Size=48
+Context=Applications
+Type=Fixed
+
+[64x64/apps]
+Size=64
+Context=Applications
+Type=Fixed
+
+[128x128/apps]
+Size=128
+Context=Applications
+Type=Fixed
+
+[256x256/apps]
+Size=256
+Context=Applications
+Type=Fixed
+
+[512x512/apps]
+Size=512
+Context=Applications
+Type=Fixed
+
+[scalable/apps]
+Size=128
+MinSize=1
+MaxSize=512
+Context=Applications
+Type=Scalable
+
+[symbolic/apps]
+Size=16
+MinSize=1
+MaxSize=256
+Context=Applications
+Type=Scalable
+EOF
+fi
+
+install -D -m644 \
+  "${ROOT}/data/icons/hicolor/scalable/apps/${APP_ID}.svg" \
+  "${HICOLOR_DST}/scalable/apps/${APP_ID}.svg"
+if [ -f "${ROOT}/data/icons/hicolor/symbolic/apps/${APP_ID}-symbolic.svg" ]; then
+  install -D -m644 \
+    "${ROOT}/data/icons/hicolor/symbolic/apps/${APP_ID}-symbolic.svg" \
+    "${HICOLOR_DST}/symbolic/apps/${APP_ID}-symbolic.svg"
+fi
+
+for size in 16 24 32 48 64 128 256 512; do
+  mkdir -p "${HICOLOR_DST}/${size}x${size}/apps"
+  rsvg-convert -w "$size" -h "$size" \
+    "${ROOT}/data/icons/hicolor/scalable/apps/${APP_ID}.svg" \
+    -o "${HICOLOR_DST}/${size}x${size}/apps/${APP_ID}.png"
+done
+rsvg-convert -w 256 -h 256 \
+  "${ROOT}/data/icons/hicolor/scalable/apps/${APP_ID}.svg" \
+  -o "${APPDIR}/.DirIcon"
+cp -f "${APPDIR}/.DirIcon" "${APPDIR}/${APP_ID}.png"
+
+ADWAITA_BUNDLED=0
+for theme in Adwaita AdwaitaLegacy; do
+  src="/usr/share/icons/${theme}"
+  [ -d "$src" ] || continue
+  dest="${APPDIR}/usr/share/icons/${theme}"
+  mkdir -p "$dest"
+  for item in "$src"/*; do
+    [ -e "$item" ] || continue
+    base="$(basename "$item")"
+    case "$base" in
+      cursors|cursors.theme) continue ;;
+    esac
+    rm -rf "${dest}/${base}"
+    cp -a "$item" "${dest}/${base}"
+  done
+  if [ -f "${dest}/index.theme" ]; then
+    ADWAITA_BUNDLED=1
+    echo "    bundled icon theme: ${theme}"
+  fi
+done
+if [ "$ADWAITA_BUNDLED" -ne 1 ]; then
+  echo "error: Adwaita icon theme not on host (install adwaita-icon-theme)" >&2
+  exit 1
+fi
+
+if command -v gtk4-update-icon-cache >/dev/null 2>&1; then
+  ICON_CACHE_BIN=gtk4-update-icon-cache
+elif command -v gtk-update-icon-cache >/dev/null 2>&1; then
+  ICON_CACHE_BIN=gtk-update-icon-cache
+else
+  ICON_CACHE_BIN=""
+fi
+if [ -n "$ICON_CACHE_BIN" ]; then
+  for theme_dir in "${APPDIR}/usr/share/icons"/*; do
+    [ -d "$theme_dir" ] || continue
+    [ -f "${theme_dir}/index.theme" ] || continue
+    "$ICON_CACHE_BIN" -f -t "$theme_dir" 2>/dev/null || true
+  done
+fi
 
 # ---------------------------------------------------------------------------
 # Smoke-test
@@ -596,6 +776,8 @@ set +e
     LD_LIBRARY_PATH="${APPDIR}/usr/lib" \
     GI_TYPELIB_PATH="${APPDIR}/usr/lib/girepository-1.0" \
     GSETTINGS_SCHEMA_DIR="${APPDIR}/usr/share/glib-2.0/schemas" \
+    XDG_DATA_DIRS="${APPDIR}/usr/share:/usr/local/share:/usr/share" \
+    GDK_PIXBUF_MODULEDIR="$(echo "${APPDIR}/usr/lib"/gdk-pixbuf-2.0/*/loaders 2>/dev/null | awk '{print $1; exit}')" \
     GDK_PIXBUF_MODULE_FILE="$(echo "${APPDIR}/usr/lib"/gdk-pixbuf-2.0/*/loaders.cache 2>/dev/null | awk '{print $1; exit}')" \
     "$PY" -B - <<'PY'
 import sys
@@ -636,6 +818,27 @@ assert not missing, f'bundled GTK/Adwaita is too old: {", ".join(missing)}'
 
 ffmpeg = ffmpeg_bin()
 assert ffmpeg, "ffmpeg not found on PATH inside AppDir"
+
+import os
+gi.require_version("GdkPixbuf", "2.0")
+from gi.repository import GdkPixbuf
+
+appdir = Path(os.environ["APPDIR"])
+svg_loader = list((appdir / "usr/lib").glob("gdk-pixbuf-2.0/*/loaders/libpixbufloader-svg.so"))
+assert svg_loader, "SVG pixbuf loader missing — app icons will be blank"
+hicolor = appdir / "usr/share/icons/hicolor"
+assert (hicolor / "index.theme").is_file(), "hicolor/index.theme missing"
+assert (hicolor / "scalable/apps/org.audio2go.Audio2Go.svg").is_file(), "app SVG missing"
+assert (hicolor / "128x128/apps/org.audio2go.Audio2Go.png").is_file(), "app PNG missing"
+assert (appdir / "usr/share/icons/Adwaita/index.theme").is_file(), "Adwaita icon theme missing"
+
+icon_svg = hicolor / "scalable/apps/org.audio2go.Audio2Go.svg"
+try:
+    pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(icon_svg))
+except Exception as exc:
+    raise AssertionError(f"could not load app SVG via gdk-pixbuf: {exc}") from exc
+assert pixbuf is not None and pixbuf.get_width() > 0
+
 print("ok: Gtk/Adw/mutagen/audio2go/ffmpeg", ffmpeg, file=sys.stderr)
 PY
 )

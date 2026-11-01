@@ -38,7 +38,14 @@ for d in "$HERE/usr/lib"/python3.*/site-packages; do
 done
 
 export GSETTINGS_SCHEMA_DIR="$HERE/usr/share/glib-2.0/schemas"
-export XDG_DATA_DIRS="$HERE/usr/share${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"
+# If XDG_DATA_DIRS is unset, GLib defaults to /usr/local/share:/usr/share.
+# Setting it without those paths hides host (and Adwaita) icons.
+_host_data="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+export XDG_DATA_DIRS="$HERE/usr/share:${_host_data}"
+case ":$XDG_DATA_DIRS:" in
+  *:/usr/share:*) ;;
+  *) export XDG_DATA_DIRS="$XDG_DATA_DIRS:/usr/share" ;;
+esac
 if [ -d "$HERE/usr/share/icons" ]; then
   export AUDIO2GO_ICON_DIR="$HERE/usr/share/icons"
 fi
@@ -67,11 +74,18 @@ if [ -d "$HERE/usr/lib64/girepository-1.0" ]; then
 fi
 
 if [ -d "$HERE/usr/lib/gdk-pixbuf-2.0" ]; then
-  for cache in "$HERE/usr/lib"/gdk-pixbuf-2.0/*/loaders.cache; do
+  for loaders in "$HERE/usr/lib"/gdk-pixbuf-2.0/*/loaders; do
+    [ -d "$loaders" ] || continue
+    export GDK_PIXBUF_MODULEDIR="$loaders"
+    cache="$loaders/../loaders.cache"
     if [ -f "$cache" ]; then
-      export GDK_PIXBUF_MODULE_FILE="$cache"
-      break
+      dest="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/audio2go-pixbuf-loaders.cache"
+      # Build-time paths, ./usr/..., and @APPDIR@ all become this mount.
+      sed -E "s|\"[^\"[:space:]]*(/usr/lib/gdk-pixbuf-2.0/)|\"$HERE\\1|g" \
+        "$cache" >"$dest" 2>/dev/null || cp "$cache" "$dest"
+      export GDK_PIXBUF_MODULE_FILE="$dest"
     fi
+    break
   done
 fi
 
