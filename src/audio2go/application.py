@@ -30,7 +30,11 @@ class Application(Adw.Application):
         self._startup_complete = False
         super().__init__(
             application_id=config.APPLICATION_ID,
-            flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
+            flags=getattr(
+                Gio.ApplicationFlags,
+                'DEFAULT_FLAGS',
+                Gio.ApplicationFlags.FLAGS_NONE,
+            ),
         )
         self.connect_after('startup', self._on_startup)
         self.connect('activate', self._on_activate)

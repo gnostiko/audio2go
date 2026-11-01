@@ -114,7 +114,7 @@ chmod +x audio2go-*-x86_64.AppImage
 
 FFmpeg is bundled. The image embeds GitHub update info for [Gear Lever](https://github.com/mijorus/gearlever) / AppImageUpdate.
 
-Each `v*` tag on `main` builds the AppImage on GitHub Actions (Ubuntu 22.04, Python 3.11) and attaches it to the release. The tag must match `APPLICATION_VERSION` in `src/audio2go/config.py` (for example `v0.1.0`).
+Each `v*` tag on `main` builds the AppImage on GitHub Actions (Ubuntu 24.04, which has GTK 4.14 and libadwaita 1.5) and attaches it to the release. The tag must match `APPLICATION_VERSION` in `src/audio2go/config.py` (for example `v0.1.1`). The image needs a host glibc recent enough for Ubuntu 24.04 (GNOME 46 / Fedora 40 and newer).
 
 To build locally:
 

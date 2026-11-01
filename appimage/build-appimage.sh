@@ -139,6 +139,7 @@ chmod +x "${APPDIR}/usr/bin/audio2go"
 # ---------------------------------------------------------------------------
 echo "==> pip install mutagen pillow"
 python3 -m pip install --upgrade --no-compile \
+  --break-system-packages \
   --target="${APPDIR}/usr/lib/python3/site-packages" \
   "mutagen>=1.47" \
   "pillow>=10.0.0"
@@ -489,6 +490,12 @@ sed -i 's/^Exec=.*/Exec=audio2go/' \
   "${APPDIR}/usr/share/applications/${APP_ID}.desktop"
 cp -f "${ROOT}/data/icons/hicolor/scalable/apps/${APP_ID}.svg" \
   "${APPDIR}/${APP_ID}.svg"
+if command -v rsvg-convert >/dev/null 2>&1; then
+  rsvg-convert -w 256 -h 256 \
+    "${ROOT}/data/icons/hicolor/scalable/apps/${APP_ID}.svg" \
+    -o "${APPDIR}/.DirIcon"
+  cp -f "${APPDIR}/.DirIcon" "${APPDIR}/${APP_ID}.png"
+fi
 install -D -m755 "${ROOT}/appimage/AppRun.in" "${APPDIR}/AppRun"
 
 # ---------------------------------------------------------------------------
@@ -608,10 +615,24 @@ assert (stdlib / "encodings").is_dir(), f"encodings missing under {stdlib}"
 import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw, GLib  # noqa: F401
+from gi.repository import Adw, Gio, Gtk, GLib  # noqa: F401
 import mutagen  # noqa: F401
 import audio2go.main  # noqa: F401
 from audio2go.sync.encode import ffmpeg_bin
+
+missing = [
+    name
+    for name, present in (
+        ('Gio.ApplicationFlags.FLAGS_NONE', hasattr(Gio.ApplicationFlags, 'FLAGS_NONE')),
+        ('Adw.ToolbarView', hasattr(Adw, 'ToolbarView')),
+        ('Adw.Dialog', hasattr(Adw, 'Dialog')),
+        ('Adw.AlertDialog', hasattr(Adw, 'AlertDialog')),
+        ('Adw.AboutDialog', hasattr(Adw, 'AboutDialog')),
+        ('Gtk.FileDialog', hasattr(Gtk, 'FileDialog')),
+    )
+    if not present
+]
+assert not missing, f'bundled GTK/Adwaita is too old: {", ".join(missing)}'
 
 ffmpeg = ffmpeg_bin()
 assert ffmpeg, "ffmpeg not found on PATH inside AppDir"

@@ -1,9 +1,12 @@
-# Build a portable x86_64 AppImage on Ubuntu 22.04 (older glibc → wider reach)
+# Build a portable x86_64 AppImage on Ubuntu 24.04 (GTK 4.14 / libadwaita 1.5)
 # and attach it to the GitHub Release for the matching tag.
+#
+# audio2go uses Adw.ToolbarView, Adw.Dialog, Gtk.FileDialog, and
+# Gio.ApplicationFlags.DEFAULT_FLAGS, which are not in Ubuntu 22.04's stack.
 #
 # Usage:
 #   1. Bump APPLICATION_VERSION in src/audio2go/config.py (and pyproject.toml).
-#   2. git tag v0.1.0 && git push origin v0.1.0
+#   2. git tag v0.1.1 && git push origin v0.1.1
 #   3. This workflow builds and uploads:
 #        audio2go-VERSION-x86_64.AppImage
 #        audio2go-VERSION-x86_64.AppImage.zsync
@@ -23,7 +26,7 @@ permissions:
 
 jobs:
   appimage:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v4
@@ -32,25 +35,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            software-properties-common \
-            ca-certificates \
-            gnupg
-          sudo add-apt-repository -y ppa:deadsnakes/ppa
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             build-essential \
-            meson \
-            ninja-build \
             curl \
             file \
             binutils \
             pkg-config \
-            python3.11 \
-            python3.11-dev \
-            python3.11-venv \
+            python3 \
             python3-pip \
-            libcairo2-dev \
-            libgirepository1.0-dev \
+            python3-gi \
+            python3-gi-cairo \
+            python3-mutagen \
+            python3-pil \
             gir1.2-gtk-4.0 \
             gir1.2-adw-1 \
             libgtk-4-1 \
@@ -58,29 +53,28 @@ jobs:
             libadwaita-1-0 \
             libadwaita-1-dev \
             gobject-introspection \
+            librsvg2-bin \
             ffmpeg \
             zsync \
-            libfuse2
-
-      - name: Use Python 3.11 + PyGObject
-        run: |
-          set -euo pipefail
-          sudo ln -sfn "$(command -v python3.11)" /usr/local/bin/python3
-          hash -r
-          python3 --version
-          curl -sS https://bootstrap.pypa.io/get-pip.py | python3
-          python3 -m pip install --upgrade pip
-          # PyGObject 3.52+ needs girepository-2.0 (Ubuntu 24.04+). Stay on 3.48
-          # so the Ubuntu 22.04 image still builds against girepository-1.0.
-          python3 -m pip install 'pycairo' 'PyGObject>=3.46,<3.50' mutagen pillow
+            libglib2.0-bin
 
       - name: Verify tools on PATH
         run: |
           set -euo pipefail
+          python3 --version
           for t in python3 gcc curl ffmpeg zsyncmake glib-compile-schemas; do
             command -v "$t"
           done
-          python3 -c 'import gi; gi.require_version("Gtk","4.0"); gi.require_version("Adw","1"); from gi.repository import Gtk, Adw; print("gi ok")'
+          python3 - <<'PY'
+          import gi
+          gi.require_version("Gtk", "4.0")
+          gi.require_version("Adw", "1")
+          from gi.repository import Adw, Gio, Gtk
+          assert hasattr(Adw, "ToolbarView"), "libadwaita too old (need ToolbarView)"
+          assert hasattr(Adw, "Dialog"), "libadwaita too old (need Dialog)"
+          assert hasattr(Gtk, "FileDialog"), "GTK too old (need FileDialog)"
+          print("gi ok", Gtk.MAJOR_VERSION, Gtk.MINOR_VERSION)
+          PY
 
       - name: Check tag matches APPLICATION_VERSION
         if: startsWith(github.ref, 'refs/tags/v')
